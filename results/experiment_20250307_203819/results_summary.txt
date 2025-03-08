@@ -1,8 +1,0 @@
-Experiment Results Summary:
-==================================================
-
-Direct Prediction MSE: 0.379023
-
-Multi-step Prediction MSEs:
-
-Plug-in Test Accuracies:
