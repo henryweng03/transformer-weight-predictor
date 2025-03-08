@@ -28,8 +28,15 @@ class LeNet5(nn.Module):
         return x
 
 
-def train_base_model(num_epochs=20, snapshot_dir="./data/snapshots"):
-    """Train a LeNet-5 model on MNIST and save weight snapshots after each epoch."""
+def train_base_model(num_epochs=20, snapshot_dir="./data/snapshots", saves_per_epoch=1):
+    """Train a LeNet-5 model on MNIST and save weight snapshots during training.
+    
+    Args:
+        num_epochs: Total number of epochs to train the model
+        snapshot_dir: Directory to save weight snapshots
+        saves_per_epoch: Number of times to save snapshots per epoch 
+                        (1 = only at end of epoch, >1 = save at regular intervals)
+    """
     
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -43,15 +50,18 @@ def train_base_model(num_epochs=20, snapshot_dir="./data/snapshots"):
     train_dataset = datasets.MNIST('data', train=True, download=True, transform=transform)
     test_dataset = datasets.MNIST('data', train=False, transform=transform)
     
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+    # Use a smaller batch size (32 instead of 64) and different learning rate to 
+    # ensure more interesting weight dynamics
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=False)
     
     # Initialize the model
     model = LeNet5().to(device)
     
-    # Set up loss and optimizer
+    # Set up loss and optimizer with slightly modified hyperparameters
+    # Use a higher learning rate (0.005) to make the learning more dynamic
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+    optimizer = optim.SGD(model.parameters(), lr=0.005, momentum=0.9, weight_decay=0.0005)
     
     # Create snapshot directory if it doesn't exist
     os.makedirs(snapshot_dir, exist_ok=True)
@@ -60,6 +70,9 @@ def train_base_model(num_epochs=20, snapshot_dir="./data/snapshots"):
     for epoch in range(1, num_epochs + 1):
         # Training
         model.train()
+        epoch_loss = 0.0
+        total_batches = len(train_loader)
+        
         for batch_idx, (data, target) in enumerate(train_loader):
             data, target = data.to(device), target.to(device)
             optimizer.zero_grad()
@@ -68,23 +81,51 @@ def train_base_model(num_epochs=20, snapshot_dir="./data/snapshots"):
             loss.backward()
             optimizer.step()
             
+            epoch_loss += loss.item()
+            
+            # Print training progress
             if batch_idx % 100 == 0:
                 print(f'Epoch: {epoch}/{num_epochs} [{batch_idx * len(data)}/{len(train_loader.dataset)}] Loss: {loss.item():.6f}')
+            
+            # Save intermediate snapshots within epoch for more granular tracking
+            if saves_per_epoch > 1:
+                # Calculate how many batches to skip between saves
+                save_interval = total_batches // saves_per_epoch
+                
+                # Save at regular intervals throughout the epoch
+                # Skip the last batch as it will be saved at the end of epoch
+                if (
+                    save_interval > 0 and 
+                    batch_idx > 0 and 
+                    batch_idx % save_interval == 0 and 
+                    batch_idx < total_batches - 1
+                ):
+                    # Include both epoch and batch percentage in filename
+                    progress_percent = (batch_idx / total_batches) * 100
+                    snapshot_path = Path(snapshot_dir) / f"epoch_{epoch}_batch_{progress_percent:.0f}pct.pt"
+                    torch.save(model.state_dict(), snapshot_path)
+                    print(f"Saved intermediate snapshot to {snapshot_path} ({batch_idx}/{total_batches} batches)")
+        
+        avg_loss = epoch_loss / len(train_loader)
+        print(f'Epoch: {epoch}/{num_epochs} Average Training Loss: {avg_loss:.6f}')
         
         # Evaluation
         model.eval()
         correct = 0
+        test_loss = 0.0
         with torch.no_grad():
             for data, target in test_loader:
                 data, target = data.to(device), target.to(device)
                 output = model(data)
+                test_loss += criterion(output, target).item()
                 pred = output.argmax(dim=1, keepdim=True)
                 correct += pred.eq(target.view_as(pred)).sum().item()
         
+        test_loss /= len(test_loader)
         accuracy = 100. * correct / len(test_loader.dataset)
-        print(f'Epoch: {epoch}/{num_epochs} Test Accuracy: {accuracy:.2f}%')
+        print(f'Epoch: {epoch}/{num_epochs} Test Loss: {test_loss:.6f} Test Accuracy: {accuracy:.2f}%')
         
-        # Save model weights snapshot after each epoch
+        # Always save model weights snapshot at the end of each epoch
         snapshot_path = Path(snapshot_dir) / f"epoch_{epoch}.pt"
         torch.save(model.state_dict(), snapshot_path)
         print(f"Saved model snapshot to {snapshot_path}")

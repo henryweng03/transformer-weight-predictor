@@ -68,7 +68,11 @@ You can use the `--mode` flag to specify which part of the experiment to run:
 Train the LeNet-5 model on MNIST and save weight snapshots:
 
 ```bash
+# Train a single model
 python3 src/main.py --mode train_base --base_epochs 20 --snapshot_dir ./data/snapshots
+
+# Train multiple models with different random seeds
+python3 src/main.py --mode train_base --base_epochs 20 --num_runs 5 --random_seed 42 --snapshot_frequency 2 --snapshot_dir ./data/snapshots
 ```
 
 #### 2. Train the Weight Predictor Only
@@ -108,7 +112,11 @@ python3 src/main.py --mode plugin_test --model_path ./results/experiment_TIMESTA
 To run the complete experiment pipeline, including base model training, meta predictor training, and all evaluations:
 
 ```bash
+# Standard pipeline
 python3 src/main.py --mode full --base_epochs 20 --sequence_length 3 --train_split 0.5 --batch_size 32 --apply_pca --n_components 500 --predictor_epochs 100 --extrapolation_steps 5
+
+# Pipeline with multiple base model runs
+python3 src/main.py --mode full --base_epochs 50 --num_runs 5 --random_seed 42 --snapshot_frequency 2 --sequence_length 3 --train_split 0.5 --batch_size 32 --apply_pca --n_components 500 --predictor_epochs 100 --extrapolation_steps 5
 ```
 
 #### Quick Testing
@@ -129,6 +137,9 @@ The main script accepts the following arguments:
 #### Base Model Training:
 - `--train_base`: Legacy flag to train the base LeNet model (use --mode instead)
 - `--base_epochs`: Number of epochs to train the base model (default: 20)
+- `--saves_per_epoch`: Number of times to save snapshots per epoch (default: 1)
+- `--random_seed`: Set a random seed for reproducibility
+- `--num_runs`: Number of base model training runs with different seeds (default: 1)
 
 #### Meta Predictor Parameters:
 - `--sequence_length`: Number of consecutive snapshots to use as input (default: 3)
