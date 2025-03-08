@@ -425,11 +425,11 @@ def plug_in_test(predicted_weights, snapshot_dir, train_split=0.5, device=None):
     test_dataset = test_loader.dataset
     pca = test_dataset.pca if hasattr(test_dataset, 'pca') else None
     
-    # Check if we're working with multiple runs
-    is_multiple_runs = (Path(snapshot_dir) / "run_1").exists()
+    # Check if we're working with the training runs directory structure
+    is_training_runs = (Path(snapshot_dir) / "run_1").exists()
     
-    if is_multiple_runs:
-        print("Using multiple runs directory structure")
+    if is_training_runs:
+        print("Using training runs directory structure")
         # Use the first run's first snapshot
         run_dir = Path(snapshot_dir) / "run_1"
         snapshot_files = sorted([f for f in run_dir.glob("epoch_*.pt") if "batch" not in f.name], 

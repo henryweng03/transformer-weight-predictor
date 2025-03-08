@@ -29,13 +29,13 @@ class WeightSequenceDataset(Dataset):
         self.apply_pca = apply_pca
         self.n_components = n_components
         
-        # Check if we are working with multiple runs
-        is_multiple_runs = False
+        # Check if we are working with the training runs directory structure
+        is_training_runs = False
         if (self.snapshot_dir / "run_1").exists():
-            is_multiple_runs = True
-            print(f"Found multiple training runs in {snapshot_dir}")
+            is_training_runs = True
+            print(f"Found training runs in {snapshot_dir}")
         
-        if is_multiple_runs:
+        if is_training_runs:
             # Collect snapshots from all run directories
             self.snapshot_files = []
             run_dirs = sorted([d for d in self.snapshot_dir.glob("run_*") if d.is_dir()], 

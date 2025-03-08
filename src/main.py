@@ -26,13 +26,14 @@ def parse_args():
     
     # Base model training params
     parser.add_argument("--train_base", action="store_true", help="Train the base LeNet model (legacy, use --mode instead)")
-    parser.add_argument("--base_epochs", type=int, default=20, help="Number of epochs to train the base model")
-    parser.add_argument("--saves_per_epoch", type=int, default=1, 
-                        help="Number of times to save snapshots per epoch (1 = end of epoch only, >1 = save at regular intervals within epoch)")
+    parser.add_argument("--training_epochs", type=int, default=20, 
+                        help="Number of epochs to train the base model")
+    parser.add_argument("--snapshots_per_epoch", type=int, default=1, 
+                        help="Number of weight snapshots to save per epoch (1 = end of epoch only, >1 = save at regular intervals)")
     parser.add_argument("--random_seed", type=int, default=None, 
                         help="Random seed for reproducibility")
-    parser.add_argument("--num_runs", type=int, default=1, 
-                        help="Number of base model training runs with different random seeds")
+    parser.add_argument("--num_runs", type=int, default=3, 
+                        help="Number of training runs with different random seeds")
     
     # Meta predictor params
     parser.add_argument("--sequence_length", type=int, default=3, help="Number of consecutive snapshots to use as input")
@@ -254,12 +255,9 @@ def main():
     if args.mode == "train_base" or args.mode == "full":
         print("\n=== Training Base Model ===")
         
-        # Set up base models directory structure for multiple runs
-        base_snapshot_dir = Path(args.snapshot_dir)
-        if args.num_runs > 1:
-            # Create a parent directory for all runs
-            base_snapshot_dir = Path(args.snapshot_dir) / "multiple_runs"
-            base_snapshot_dir.mkdir(exist_ok=True)
+        # Set up directory structure for multiple training runs
+        base_snapshot_dir = Path(args.snapshot_dir) / "training_runs"
+        base_snapshot_dir.mkdir(exist_ok=True, parents=True)
         
         for run in range(1, args.num_runs + 1):
             # Set a different random seed for each run
@@ -272,17 +270,14 @@ def main():
                 print(f"Run {run}/{args.num_runs} with random initialization")
             
             # Set up snapshot directory for this run
-            if args.num_runs > 1:
-                run_snapshot_dir = base_snapshot_dir / f"run_{run}"
-                run_snapshot_dir.mkdir(exist_ok=True)
-            else:
-                run_snapshot_dir = base_snapshot_dir
+            run_snapshot_dir = base_snapshot_dir / f"run_{run}"
+            run_snapshot_dir.mkdir(exist_ok=True)
             
-            # Train the base model with the specified number of saves per epoch
+            # Train the base model with the specified number of snapshots per epoch
             base_model = train_base_model(
-                num_epochs=args.base_epochs, 
+                num_epochs=args.training_epochs, 
                 snapshot_dir=str(run_snapshot_dir),
-                saves_per_epoch=args.saves_per_epoch
+                saves_per_epoch=args.snapshots_per_epoch
             )
             
             # Evaluate base model
@@ -298,18 +293,22 @@ def main():
     if args.mode == "train_predictor" or args.mode == "full":
         print("\n=== Training Meta Predictor ===")
         
-        # Update snapshot directory if using multiple runs
-        if args.num_runs > 1 and (args.mode == "full" or Path(args.snapshot_dir).name == "multiple_runs"):
-            print("Using snapshots from multiple runs for training the predictor")
-            
+        # Set paths for training the predictor
+        if args.mode == "full":
             # If in full mode, use the directory we just created
-            if args.mode == "full":
-                predictor_snapshot_dir = str(base_snapshot_dir)
-            else:
-                # If only in train_predictor mode, use the specified directory
-                predictor_snapshot_dir = args.snapshot_dir
+            predictor_snapshot_dir = str(base_snapshot_dir)
         else:
-            predictor_snapshot_dir = args.snapshot_dir
+            # Check if we're pointing to the training_runs directory
+            snapshots_path = Path(args.snapshot_dir)
+            if (snapshots_path / "training_runs").exists():
+                predictor_snapshot_dir = str(snapshots_path / "training_runs")
+            elif snapshots_path.name == "training_runs":
+                predictor_snapshot_dir = str(snapshots_path)
+            else:
+                # Default to the specified directory
+                predictor_snapshot_dir = args.snapshot_dir
+        
+        print(f"Using snapshots from {predictor_snapshot_dir} for training the predictor")
             
         model, train_losses, test_losses = train_transformer_predictor(
             snapshot_dir=predictor_snapshot_dir,

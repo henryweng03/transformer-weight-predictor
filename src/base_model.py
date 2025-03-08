@@ -28,14 +28,14 @@ class LeNet5(nn.Module):
         return x
 
 
-def train_base_model(num_epochs=20, snapshot_dir="./data/snapshots", saves_per_epoch=1):
+def train_base_model(num_epochs=20, snapshot_dir="./data/snapshots/training_runs", saves_per_epoch=1):
     """Train a LeNet-5 model on MNIST and save weight snapshots during training.
     
     Args:
         num_epochs: Total number of epochs to train the model
         snapshot_dir: Directory to save weight snapshots
         saves_per_epoch: Number of times to save snapshots per epoch 
-                        (1 = only at end of epoch, >1 = save at regular intervals)
+                         (1 = only at end of epoch, >1 = save at regular intervals within epoch)
     """
     
     # Set device
