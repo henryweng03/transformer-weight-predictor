@@ -1,0 +1,17 @@
+Experiment Configuration:
+==================================================
+train_base: True
+base_epochs: 20
+sequence_length: 3
+train_split: 0.5
+batch_size: 32
+apply_pca: True
+n_components: 500
+learning_rate: 0.0001
+predictor_epochs: 100
+extrapolation_steps: 5
+snapshot_dir: ./data/snapshots
+results_dir: ./results
+no_cuda: False
+
+Device: cpu

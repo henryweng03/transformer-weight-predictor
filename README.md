@@ -48,36 +48,86 @@ transformer-weight-predictor/
 
 ## Running the Experiment
 
-### 1. Train the Base Model and Collect Snapshots
+The experiment can be run in several modes, either executing the entire pipeline or individual components.
 
-First, train the LeNet-5 model on MNIST and save weight snapshots:
+### Modes of Operation
+
+You can use the `--mode` flag to specify which part of the experiment to run:
+
+- `full`: Run the complete experiment pipeline (default)
+- `train_base`: Train only the base LeNet model
+- `train_predictor`: Train only the transformer-based meta predictor
+- `evaluate`: Evaluate the predictor on held-out epochs (direct prediction)
+- `extrapolate`: Test multi-step extrapolation
+- `plugin_test`: Perform plug-in test on predicted weights
+
+### Examples
+
+#### 1. Train the Base Model Only
+
+Train the LeNet-5 model on MNIST and save weight snapshots:
 
 ```bash
-python src/main.py --train_base --base_epochs 20 --snapshot_dir ./data/snapshots
+python3 src/main.py --mode train_base --base_epochs 20 --snapshot_dir ./data/snapshots
 ```
 
-### 2. Train and Evaluate the Weight Predictor
+#### 2. Train the Weight Predictor Only
 
-Train the transformer-based weight predictor using the collected snapshots:
+After collecting snapshots, train the transformer-based weight predictor:
 
 ```bash
-python src/main.py --sequence_length 3 --train_split 0.5 --batch_size 32 --apply_pca --n_components 500 --predictor_epochs 100 --snapshot_dir ./data/snapshots
+python3 src/main.py --mode train_predictor --sequence_length 3 --train_split 0.5 --batch_size 32 --apply_pca --n_components 500 --predictor_epochs 100 --snapshot_dir ./data/snapshots
 ```
 
-### Full Experiment Pipeline
+#### 3. Evaluate a Trained Model
 
-To run the complete experiment pipeline, including base model training, meta predictor training, and evaluation:
+Evaluate a trained predictor on held-out epochs:
 
 ```bash
-python src/main.py --train_base --base_epochs 20 --sequence_length 3 --train_split 0.5 --batch_size 32 --apply_pca --n_components 500 --predictor_epochs 100 --extrapolation_steps 5
+python3 src/main.py --mode evaluate --model_path ./results/experiment_TIMESTAMP/models/transformer_predictor.pt --snapshot_dir ./data/snapshots --apply_pca --n_components 500
+```
+
+#### 4. Test Multi-step Extrapolation
+
+Test a trained predictor on multi-step extrapolation:
+
+```bash
+python3 src/main.py --mode extrapolate --model_path ./results/experiment_TIMESTAMP/models/transformer_predictor.pt --extrapolation_steps 5 --snapshot_dir ./data/snapshots --apply_pca --n_components 500
+```
+
+#### 5. Run Plug-in Test
+
+Test how predicted weights perform when plugged into the base model:
+
+```bash
+python3 src/main.py --mode plugin_test --model_path ./results/experiment_TIMESTAMP/models/transformer_predictor.pt --snapshot_dir ./data/snapshots --apply_pca --n_components 500
+```
+
+#### 6. Full Experiment Pipeline
+
+To run the complete experiment pipeline, including base model training, meta predictor training, and all evaluations:
+
+```bash
+python3 src/main.py --mode full --base_epochs 20 --sequence_length 3 --train_split 0.5 --batch_size 32 --apply_pca --n_components 500 --predictor_epochs 100 --extrapolation_steps 5
+```
+
+#### Quick Testing
+
+For quick testing of the pipeline with minimal computational resources:
+
+```bash
+python3 src/main.py --mode full --base_epochs 3 --sequence_length 3 --train_split 0.5 --batch_size 32 --apply_pca --n_components 100 --predictor_epochs 5 --extrapolation_steps 2
 ```
 
 ### Command-Line Arguments
 
 The main script accepts the following arguments:
 
+#### Experiment Mode:
+- `--mode`: Which part of the experiment to run (choices: "full", "train_base", "train_predictor", "evaluate", "extrapolate", "plugin_test") (default: "full")
+
 #### Base Model Training:
-- `--train_base`: Flag to train the base LeNet model
+- `--train_base`: Legacy flag to train the base LeNet model (use --mode instead)
 - `--base_epochs`: Number of epochs to train the base model (default: 20)
 
 #### Meta Predictor Parameters:
@@ -91,6 +141,7 @@ The main script accepts the following arguments:
 
 #### Evaluation Parameters:
 - `--extrapolation_steps`: Number of steps for multi-step extrapolation (default: 5)
+- `--model_path`: Path to a saved meta predictor model (required for evaluate/extrapolate/plugin_test modes)
 
 #### Other Parameters:
 - `--snapshot_dir`: Directory to save weight snapshots (default: ./data/snapshots)
@@ -122,4 +173,4 @@ There are several ways to extend this project:
 
 ## License
 
-This project is open source and available under the MIT License.# transformer-weight-predictor
+This project is open source and available under the MIT License.
