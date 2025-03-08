@@ -45,7 +45,7 @@ def parse_args():
     parser.add_argument("--predictor_epochs", type=int, default=100, help="Number of epochs to train the meta predictor")
     
     # Evaluation params
-    parser.add_argument("--extrapolation_steps", type=int, default=5, help="Number of steps for multi-step extrapolation")
+    parser.add_argument("--extrapolation_steps", type=int, default=40, help="Number of steps for multi-step extrapolation")
     
     # Model loading
     parser.add_argument("--model_path", type=str, default=None, 
@@ -351,7 +351,8 @@ def main():
             train_split=args.train_split,
             apply_pca=args.apply_pca,
             n_components=args.n_components,
-            device=device
+            device=device,
+            result_dir=experiment_dir
         )
         
         # Create weight trajectory visualization
@@ -367,7 +368,8 @@ def main():
             num_steps=args.extrapolation_steps,
             apply_pca=args.apply_pca,
             n_components=args.n_components,
-            device=device
+            device=device,
+            result_dir=experiment_dir
         )
         
         # Plot MSE per step

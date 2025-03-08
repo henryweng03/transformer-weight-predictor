@@ -28,6 +28,24 @@ class LeNet5(nn.Module):
         return x
 
 
+def evaluate_model(model, test_loader, criterion, device):
+    """Evaluate the model on the test set and return accuracy and loss."""
+    model.eval()
+    correct = 0
+    test_loss = 0.0
+    with torch.no_grad():
+        for data, target in test_loader:
+            data, target = data.to(device), target.to(device)
+            output = model(data)
+            test_loss += criterion(output, target).item()
+            pred = output.argmax(dim=1, keepdim=True)
+            correct += pred.eq(target.view_as(pred)).sum().item()
+    
+    test_loss /= len(test_loader)
+    accuracy = 100. * correct / len(test_loader.dataset)
+    return test_loss, accuracy
+
+
 def train_base_model(num_epochs=20, snapshot_dir="./data/snapshots/training_runs", saves_per_epoch=1):
     """Train a LeNet-5 model on MNIST and save weight snapshots during training.
     
@@ -100,33 +118,28 @@ def train_base_model(num_epochs=20, snapshot_dir="./data/snapshots/training_runs
                     batch_idx % save_interval == 0 and 
                     batch_idx < total_batches - 1
                 ):
+                    # Evaluate model to get test accuracy
+                    test_loss, accuracy = evaluate_model(model, test_loader, criterion, device)
+                    
                     # Include both epoch and batch percentage in filename
                     progress_percent = (batch_idx / total_batches) * 100
-                    snapshot_path = Path(snapshot_dir) / f"epoch_{epoch}_batch_{progress_percent:.0f}pct.pt"
+                    snapshot_path = Path(snapshot_dir) / f"epoch_{epoch}_batch_{progress_percent:.0f}pct_acc_{accuracy:.2f}.pt"
                     torch.save(model.state_dict(), snapshot_path)
                     print(f"Saved intermediate snapshot to {snapshot_path} ({batch_idx}/{total_batches} batches)")
+                    print(f"Intermediate Test Loss: {test_loss:.6f} Test Accuracy: {accuracy:.2f}%")
+                    
+                    # Set model back to training mode
+                    model.train()
         
         avg_loss = epoch_loss / len(train_loader)
         print(f'Epoch: {epoch}/{num_epochs} Average Training Loss: {avg_loss:.6f}')
         
-        # Evaluation
-        model.eval()
-        correct = 0
-        test_loss = 0.0
-        with torch.no_grad():
-            for data, target in test_loader:
-                data, target = data.to(device), target.to(device)
-                output = model(data)
-                test_loss += criterion(output, target).item()
-                pred = output.argmax(dim=1, keepdim=True)
-                correct += pred.eq(target.view_as(pred)).sum().item()
-        
-        test_loss /= len(test_loader)
-        accuracy = 100. * correct / len(test_loader.dataset)
+        # Evaluation at the end of each epoch
+        test_loss, accuracy = evaluate_model(model, test_loader, criterion, device)
         print(f'Epoch: {epoch}/{num_epochs} Test Loss: {test_loss:.6f} Test Accuracy: {accuracy:.2f}%')
         
         # Always save model weights snapshot at the end of each epoch
-        snapshot_path = Path(snapshot_dir) / f"epoch_{epoch}.pt"
+        snapshot_path = Path(snapshot_dir) / f"epoch_{epoch}_done_acc_{accuracy:.2f}.pt"
         torch.save(model.state_dict(), snapshot_path)
         print(f"Saved model snapshot to {snapshot_path}")
     

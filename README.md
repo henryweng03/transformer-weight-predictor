@@ -17,6 +17,7 @@ The experiment involves:
 ### Requirements
 
 This project requires:
+
 - Python 3.7+
 - PyTorch 1.8+
 - torchvision
@@ -69,7 +70,7 @@ Train the LeNet-5 model on MNIST and save weight snapshots:
 
 ```bash
 # Train multiple models with different random seeds
-python3 src/main.py --mode train_base --training_epochs 20 --num_runs 5 --random_seed 42 --snapshots_per_epoch 2 --snapshot_dir ./data/snapshots
+python3 src/main.py --mode train_base --training_epochs 2 --num_runs 10 --random_seed 42 --snapshots_per_epoch 20 --snapshot_dir ./data/snapshots
 ```
 
 #### 2. Train the Weight Predictor Only
@@ -110,7 +111,7 @@ To run the complete experiment pipeline, including base model training, meta pre
 
 ```bash
 # Full pipeline with multiple training runs
-python3 src/main.py --mode full --training_epochs 50 --num_runs 5 --random_seed 42 --snapshots_per_epoch 2 --sequence_length 3 --train_split 0.5 --batch_size 32 --apply_pca --n_components 64 --predictor_epochs 100 --extrapolation_steps 5
+python3 src/main.py --mode full --training_epochs 2 --num_runs 5 --random_seed 42 --snapshots_per_epoch 10 --sequence_length 3 --train_split 0.5 --batch_size 32 --apply_pca --n_components 64 --predictor_epochs 100 --extrapolation_steps 5
 ```
 
 #### Quick Testing
@@ -126,9 +127,11 @@ python3 src/main.py --mode full --base_epochs 3 --sequence_length 3 --train_spli
 The main script accepts the following arguments:
 
 #### Experiment Mode:
+
 - `--mode`: Which part of the experiment to run (choices: "full", "train_base", "train_predictor", "evaluate", "extrapolate", "plugin_test") (default: "full")
 
 #### Base Model Training:
+
 - `--train_base`: Legacy flag to train the base LeNet model (use --mode instead)
 - `--training_epochs`: Number of epochs to train the base model (default: 20)
 - `--snapshots_per_epoch`: Number of weight snapshots to save per epoch (default: 1)
@@ -136,6 +139,7 @@ The main script accepts the following arguments:
 - `--num_runs`: Number of training runs with different random seeds (default: 3)
 
 #### Meta Predictor Parameters:
+
 - `--sequence_length`: Number of consecutive snapshots to use as input (default: 3)
 - `--train_split`: Fraction of snapshots to use for training (default: 0.5)
 - `--batch_size`: Batch size for training the meta predictor (default: 32)
@@ -145,10 +149,12 @@ The main script accepts the following arguments:
 - `--predictor_epochs`: Number of epochs to train the meta predictor (default: 100)
 
 #### Evaluation Parameters:
+
 - `--extrapolation_steps`: Number of steps for multi-step extrapolation (default: 5)
 - `--model_path`: Path to a saved meta predictor model (required for evaluate/extrapolate/plugin_test modes)
 
 #### Other Parameters:
+
 - `--snapshot_dir`: Directory to save weight snapshots (default: ./data/snapshots)
 - `--results_dir`: Directory to save results (default: ./results)
 - `--no_cuda`: Flag to disable CUDA
@@ -181,6 +187,7 @@ The "plug-in accuracy" is a crucial metric that evaluates how well the predicted
 A high plug-in accuracy indicates that our predicted weights are not just mathematically close to the actual weights (MSE), but also functionally equivalent in terms of model performance.
 
 Typically, we see a progression in accuracy across prediction steps, which shows how the transformer's predictions improve as it generates weights corresponding to later training stages. For example, a pattern like:
+
 - Step 1: 25% (poor performance)
 - Step 3: 60% (moderate performance)
 - Step 5: 90% (excellent performance)
