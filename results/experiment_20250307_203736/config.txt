@@ -1,0 +1,22 @@
+Experiment Configuration:
+==================================================
+mode: train_predictor
+train_base: False
+base_epochs: 20
+saves_per_epoch: 1
+random_seed: None
+num_runs: 1
+sequence_length: 4
+train_split: 0.5
+batch_size: 16
+apply_pca: True
+n_components: 300
+learning_rate: 0.0001
+predictor_epochs: 50
+extrapolation_steps: 5
+model_path: None
+snapshot_dir: data/snapshots/multiple_runs
+results_dir: ./results
+no_cuda: False
+
+Device: cpu

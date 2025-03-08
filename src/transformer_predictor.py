@@ -21,10 +21,20 @@ class PositionalEncoding(nn.Module):
         # Create positional encoding
         pe = torch.zeros(max_len, d_model)
         position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        
+        # Handle both even and odd dimensions
         div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
         
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
+        # Make sure div_term is the right length for the odd/even case
+        if d_model % 2 == 0:
+            # Even case
+            pe[:, 0::2] = torch.sin(position * div_term)
+            pe[:, 1::2] = torch.cos(position * div_term)
+        else:
+            # Odd case
+            div_term = div_term[:d_model//2 + 1]  # Add one extra element for odd case
+            pe[:, 0::2] = torch.sin(position * div_term)
+            pe[:, 1::2][:, :d_model//2] = torch.cos(position * div_term[:-1])
         
         # Register buffer (persistent state)
         self.register_buffer('pe', pe.unsqueeze(0))
@@ -114,9 +124,32 @@ def train_transformer_predictor(snapshot_dir, sequence_length=3, train_split=0.5
     input_dim = inputs.shape[2]  # [batch_size, seq_len, features]
     
     # Create model
+    # Adjust number of heads to be compatible with input dimension
+    if input_dim % 8 == 0:
+        nhead = 8
+    elif input_dim % 5 == 0:
+        nhead = 5
+    else:
+        # Find the largest divisor <= 8
+        for h in range(8, 0, -1):
+            if input_dim % h == 0:
+                nhead = h
+                break
+        else:
+            # If no clean divisor found, adjust input_dim with padding
+            original_input_dim = input_dim
+            for adj in range(1, 9):
+                if (input_dim + adj) % 8 == 0:
+                    input_dim = input_dim + adj
+                    break
+            print(f"Adjusted input dimension from {original_input_dim} to {input_dim} to be compatible with 8 attention heads")
+            nhead = 8
+    
+    print(f"Using {nhead} attention heads for input dimension {input_dim}")
+    
     model = TransformerPredictor(
         input_dim=input_dim,
-        nhead=8,
+        nhead=nhead,
         num_encoder_layers=6,
         dim_feedforward=2048,
         dropout=0.1
@@ -392,10 +425,23 @@ def plug_in_test(predicted_weights, snapshot_dir, train_split=0.5, device=None):
     test_dataset = test_loader.dataset
     pca = test_dataset.pca if hasattr(test_dataset, 'pca') else None
     
-    # Load all snapshot files to get the parameter names and shapes
-    snapshot_files = sorted(Path(snapshot_dir).glob("epoch_*.pt"), 
-                           key=lambda x: int(x.stem.split('_')[1]))
+    # Check if we're working with multiple runs
+    is_multiple_runs = (Path(snapshot_dir) / "run_1").exists()
     
+    if is_multiple_runs:
+        print("Using multiple runs directory structure")
+        # Use the first run's first snapshot
+        run_dir = Path(snapshot_dir) / "run_1"
+        snapshot_files = sorted([f for f in run_dir.glob("epoch_*.pt") if "batch" not in f.name], 
+                              key=lambda x: int(x.stem.split('_')[1]))
+    else:
+        # Standard single run handling
+        snapshot_files = sorted([f for f in Path(snapshot_dir).glob("epoch_*.pt") if "batch" not in f.name], 
+                              key=lambda x: int(x.stem.split('_')[1]))
+    
+    if not snapshot_files:
+        raise ValueError(f"No snapshot files found in {snapshot_dir}")
+        
     # Get a template state dict to know parameter names and shapes
     template_state_dict = torch.load(snapshot_files[0], map_location=torch.device('cpu'))
     

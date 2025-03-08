@@ -189,10 +189,29 @@ def load_model(model_path, device):
     
     checkpoint = torch.load(model_path, map_location=device)
     
+    # Get input dimension
+    input_dim = checkpoint['input_dim']
+    
+    # Determine appropriate number of heads
+    if input_dim % 8 == 0:
+        nhead = 8
+    elif input_dim % 5 == 0:
+        nhead = 5
+    else:
+        # Find the largest divisor <= 8
+        for h in range(8, 0, -1):
+            if input_dim % h == 0:
+                nhead = h
+                break
+        else:
+            nhead = 1  # Fallback to 1 head
+    
+    print(f"Using {nhead} attention heads for input dimension {input_dim}")
+    
     # Create model instance
     model = TransformerPredictor(
-        input_dim=checkpoint['input_dim'],
-        nhead=8,
+        input_dim=input_dim,
+        nhead=nhead,
         num_encoder_layers=6,
         dim_feedforward=2048,
         dropout=0.1

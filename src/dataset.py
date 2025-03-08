@@ -173,7 +173,10 @@ class WeightSequenceDataset(Dataset):
     
     def __getitem__(self, idx):
         input_seq, target = self.sequences[idx]
-        return torch.tensor(input_seq, dtype=torch.float32), torch.tensor(target, dtype=torch.float32)
+        # Convert lists to numpy arrays first for better performance
+        input_np = np.array(input_seq)
+        target_np = np.array(target)
+        return torch.tensor(input_np, dtype=torch.float32), torch.tensor(target_np, dtype=torch.float32)
 
 
 def prepare_dataloaders(snapshot_dir, sequence_length=3, train_split=0.5, batch_size=32, 
